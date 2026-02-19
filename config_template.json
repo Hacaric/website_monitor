@@ -1,0 +1,10 @@
+{
+    "check_delay_seconds":7200,
+    "targets":[{
+        "url":"https://google.com",
+        "webhook":YOUR_DISCORD_WEBHOOK,
+        "use_webhook_on_status_change":true,
+        "check_content_changes":true,
+        "use_webhook_on_content_change":false
+    }]
+}
