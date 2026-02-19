@@ -171,12 +171,12 @@ try:
                 old_data[url]["status_code"] = status_code
                 log(f"Added url {url} with status {status_code}")
 
-            if status_code != old_data[url]["status_code"] and (not target.get("ignore_inital_status_check") or not this_is_first_status_check):
+            if status_code != old_data[url]["status_code"] and not (target.get("ignore_inital_status_check") and this_is_first_status_check):
                 if target.get("use_webhook_on_status_change"):
                     if target.get("ping_on_status_change"):
-                        logToDiscord(f"@everyone `{url}` changed status code to {status_code}!", webhook_url=target.get("url"), webhook_username=target.get("webhook_username"))
+                        logToDiscord(f"@everyone `{url}` changed status code to {status_code}!", webhook_url=target.get("webhook"), webhook_username=target.get("webhook_username"))
                     else:
-                        logToDiscord(f"`{url}` changed status code to {status_code}!", webhook_url=target.get("url"), webhook_username=target.get("webhook_username"))
+                        logToDiscord(f"`{url}` changed status code to {status_code}!", webhook_url=target.get("webhook"), webhook_username=target.get("webhook_username"))
                 old_data[url]["status_code"] = status_code
                 something_changed = True
 
@@ -204,8 +204,8 @@ try:
                     log(f"Website content has changed!")
                     something_changed = True
                     old_data[url]["content"] = current_content
-                    if target.get("use_webhook_on_content_change") and (target.get("ignore_inital_status_check") or not this_is_first_status_check):
-                        logToDiscord(f"Content of {url} has changed.", text_as_file=current_content, webhook_url=target.get("url"), webhook_username=config["webhook_username"])
+                    if target.get("use_webhook_on_content_change") and not (target.get("ignore_inital_status_check") and this_is_first_status_check):
+                        logToDiscord(f"Content of {url} has changed.", text_as_file=current_content, webhook_url=target.get("webhook"), webhook_username=config["webhook_username"])
 
             else:
                 current_content = ""
