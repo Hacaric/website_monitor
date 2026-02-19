@@ -212,7 +212,7 @@ try:
 
             else:
                 current_content = ""
-            if something_changed:
+            if something_changed and target.get("save_diffs"):
                 log("Writing changes...")
                 target_file = os.path.join(project_dir, "history", f"target_diffs_{make_safe_filename(url)}.json")
                 msg = write_content_change(status_code, current_content, old_content, target_file)
