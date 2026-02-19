@@ -1,9 +1,17 @@
 {
     "check_delay_seconds":7200,
+    "online_check_reference":"google.com",
+    "online_check_delay_seconds":30,
+    "default_url_prefix":"https://",
+    "ignore_inital_status_check":true,
     "targets":[{
-        "url":"https://google.com",
+        "url":WEBSITE_URL,
+        "require_ssl_certificate":true,
         "webhook":YOUR_DISCORD_WEBHOOK,
+        "save_diffs":true,
+        "webhook_username":"Website monitoring bot", 
         "use_webhook_on_status_change":true,
+        "ping_on_status_change":false,
         "check_content_changes":true,
         "use_webhook_on_content_change":false
     }]

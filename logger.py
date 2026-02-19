@@ -122,7 +122,7 @@ def new_log(name, path, overwrite=True):
     # stats_file_name = f"statisctic_{formatted_date_time}.txt"
     # stats_file = open(os.path.join(os.path.dirname(__file__), "stats", stats_file_name), "wt")
 
-def log(*msg, target_logs_names=[]):
+def log(*msg, target_logs_names=[], end="\n"):
     # now = datetime.now()
     # final_message = f"[{now.strftime('%H:%M:%S')}]"
     final_message = ""
@@ -141,7 +141,8 @@ def log(*msg, target_logs_names=[]):
     if final_message:
         for log_file_name in target_logs_names:
             log_file:LogFile = LOG_FILES[log_file_name]
-            log_file.write(final_message, flush=True)
+            log_file.write(final_message, flush=True, end=end)
+    print(final_message,end=end)
 
 def closeAll():
     for log in LOG_FILES:
