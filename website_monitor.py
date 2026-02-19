@@ -206,7 +206,7 @@ try:
                     something_changed = True
                     old_data[url]["content"] = current_content
                     if target.get("use_webhook_on_content_change") and (target.get("ignore_inital_status_check") or not this_is_first_status_check):
-                        logToDiscord(f"Content of {url} has changed.", text_as_file=current_content, webhook_url=config["webhook_url"], webhook_username=config["webhook_username"])
+                        logToDiscord(f"Content of {url} has changed.", text_as_file=current_content, webhook_url=target.get("url"), webhook_username=config["webhook_username"])
 
             else:
                 current_content = ""
