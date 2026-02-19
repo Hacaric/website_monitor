@@ -34,10 +34,9 @@ def logToDiscord(*msg, webhook_url, webhook_username, text_as_file=None):
         log(f"Error sending message to discord webhook: {e}")
         return
     try:
-        response.raise_for_status()  # Raise an exception for bad status codes
-        return "Message sent successfully."
+        response.raise_for_status()
     except requests.exceptions.HTTPError as err:
-        return f"Error: {err}"
+        log(f"Error sending discord message: {err}")
 
 log("Loading config.json...")
 try:
