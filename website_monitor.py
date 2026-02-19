@@ -22,14 +22,17 @@ def logToDiscord(*msg, webhook_url, webhook_username, text_as_file=None):
     logger.log(*msg)
     data = {
         "username": webhook_username,
-        "content": " ".join(list(msg))
+        "content": " ".join(map(str, msg))
     }
     files = None
     if text_as_file is not None:
         file_data = io.BytesIO(text_as_file.encode('utf-8'))
         files = {"file": ("content.html", file_data)}
     try:
-        response = requests.post(webhook_url, json=data, files=files)
+        if files:
+            response = requests.post(webhook_url, data=data, files=files)
+        else:
+            response = requests.post(webhook_url, json=data)
     except requests.ConnectionError as e:
         log(f"Error sending message to discord webhook: {e}")
         return
