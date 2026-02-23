@@ -185,11 +185,9 @@ try:
 
             if target.get("check_content_changes"):
                 try:
-                    log(f"Decoding response.content with encoding {response.apparent_encoding}...  ", end="")
-                    current_content = response.content.decode(encoding=response.apparent_encoding)
-                    log("Done.")
+                    current_content = response.text
                 except Exception as e:
-                    log(f"Error decoding response.content: {e}")
+                    log(f"Error reading response.text: {e}")
                     current_content = ""
 
                 if not url in old_data:

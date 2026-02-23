@@ -1,3 +1,5 @@
 config.json
 last_status.json
 __pycache__/*
+log/*
+history/*
