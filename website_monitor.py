@@ -219,7 +219,7 @@ try:
                 log("Nothing changed.")
         with open(os.path.join(project_dir, previous_data_filename), "w") as f:
             json.dump(old_data, f)
-        log(f"Next check at {time.strftime("%H:%M", time.localtime(time.time()+1000))}")
+        log(f"Next check at {time.strftime("%H:%M", time.localtime(time.time()+config["check_delay_seconds"]))}")
         time.sleep(config["check_delay_seconds"])
 
 except KeyboardInterrupt:
