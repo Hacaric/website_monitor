@@ -10,7 +10,7 @@
         "webhook":YOUR_DISCORD_WEBHOOK,
         "save_diffs":true,
         "webhook_username":"Website monitoring bot", 
-        "use_webhook_on_status_change":true,
+        "use_discord_on_status_change":true,
         "ping_on_status_change":false,
         "check_content_changes":true,
         "use_webhook_on_content_change":false

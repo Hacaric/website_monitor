@@ -4,6 +4,7 @@ import logger
 import difflib
 import io
 from datetime import datetime
+from discord_log import *
 
 
 
@@ -14,32 +15,36 @@ if not "history" in os.listdir(project_dir):
 
 logger.new_log("main", os.path.join(os.path.dirname(__file__), "log"), overwrite=False)
 
+DISCORD_LOGGERS = []
 
 def log(*msg, end="\n"):
     logger.log(*msg, target_logs_names=["main"], end=end)
 
-def logToDiscord(*msg, webhook_url, webhook_username, text_as_file=None):
+def logToDiscord(target_id, *msg, text_as_file=None):
     logger.log(*msg)
-    data = {
-        "username": webhook_username,
-        "content": " ".join(map(str, msg))
-    }
-    files = None
-    if text_as_file is not None:
-        file_data = io.BytesIO(text_as_file.encode('utf-8'))
-        files = {"file": ("content.html", file_data)}
-    try:
-        if files:
-            response = requests.post(webhook_url, data=data, files=files)
-        else:
-            response = requests.post(webhook_url, json=data)
-    except requests.ConnectionError as e:
-        log(f"Error sending message to discord webhook: {e}")
-        return
-    try:
-        response.raise_for_status()
-    except requests.exceptions.HTTPError as err:
-        log(f"Error sending discord message: {err}")
+    for discord_logger in DISCORD_LOGGERS[target_id]:
+        discord_logger.log(*msg, text_as_file=text_as_file)
+    # data = {
+    #     "username": webhook_username,
+    #     "content": " ".join(map(str, msg))
+    # }
+    # files = None
+    # if text_as_file is not None:
+    #     file_data = io.BytesIO(text_as_file.encode('utf-8'))
+    #     files = {"file": ("content.html", file_data)}
+    # try:
+    #     if files:
+    #         response = requests.post(webhook_url, data=data, files=files)
+    #     else:
+    #         response = requests.post(webhook_url, json=data)
+    # except requests.ConnectionError as e:
+    #     log(f"Error sending message to discord webhook: {e}")
+    #     return
+    # try:
+    #     response.raise_for_status()
+    # except requests.exceptions.HTTPError as err:
+    #     log(f"Error sending discord message: {err}")
+
 
 log("Loading config.json...")
 try:
@@ -58,6 +63,22 @@ except Exception as e:
 
 log(f"Loaded config.json: {config}")
 log("Started...")
+
+for target in config["targets"]:
+    DISCORD_LOGGERS.append([])
+    for logger_ in target["loggers"]:
+        match logger_["type"]:
+            case "BOT":
+                token = logger_["token"]
+                message_format = logger_.get("message_format","%M")
+                target_type = logger_["target_type"]
+                target_id = logger_["target_id"]
+                DISCORD_LOGGERS[-1].append(DiscordBotLog(token, target_type, target_id, message_format=message_format))
+            case "WEBHOOK":
+                url = logger_["url"]
+                webhook_username = logger_.get("webhook_username","Website monitor")
+                message_format = logger_.get("message_format", "%M")
+                DISCORD_LOGGERS[-1].append(DiscordWebhookLog(url, webhook_username, message_format))
 
 default_url_prefix:str = config["default_url_prefix"]
 
@@ -124,9 +145,17 @@ online_reference_url:str = config["online_check_reference"].strip()
 if not online_reference_url.startswith(("https://", "http://", default_url_prefix)):
     online_reference_url = default_url_prefix + online_reference_url
 
+# class Target:
+#     def __init__(self, target_url, )
+
 try:
     while True:
-
+        if old_data.get('last_check_timestamp'):
+            epoch_date_time = datetime.fromtimestamp(round(old_data.get('last_check_timestamp')))
+            epoch_date_time_now = datetime.fromtimestamp(round(time.time()))
+            log(f"Last check occured on {epoch_date_time}, which was {epoch_date_time_now - epoch_date_time} ago")
+        else:
+            log("This is the first check (no previous timestamp)")
         log("Checking internet access..")
         online_check_delay_seconds = config["online_check_delay_seconds"]
         online = False
@@ -146,7 +175,7 @@ try:
 
 
 
-        for target in targets:
+        for target_id, target in enumerate(targets):
             url = target["url"]
             log(f"Checking {url}...")
             try:
@@ -175,11 +204,11 @@ try:
                 log(f"Added url {url} with status {status_code}")
 
             if status_code != old_data[url]["status_code"] and not (target.get("ignore_inital_status_check") and this_is_first_status_check):
-                if target.get("use_webhook_on_status_change"):
-                    if target.get("ping_on_status_change"):
-                        logToDiscord(f"@everyone `{url}` changed status code to {status_code}!", webhook_url=target.get("webhook"), webhook_username=target.get("webhook_username"))
-                    else:
-                        logToDiscord(f"`{url}` changed status code to {status_code}!", webhook_url=target.get("webhook"), webhook_username=target.get("webhook_username"))
+                if target.get("use_discord_on_status_change"):
+                    # if target.get("ping_on_status_change"):
+                    #     logToDiscord(f"@everyone `{url}` changed status code to {status_code}!"
+                    # else:
+                    logToDiscord(target_id, f"`{url}` changed status code to {status_code}!")
                 old_data[url]["status_code"] = status_code
                 something_changed = True
 
@@ -206,7 +235,7 @@ try:
                     something_changed = True
                     old_data[url]["content"] = current_content
                     if target.get("use_webhook_on_content_change") and not (target.get("ignore_inital_status_check") and this_is_first_status_check):
-                        logToDiscord(f"Content of {url} has changed.", text_as_file=current_content, webhook_url=target.get("webhook"), webhook_username=target.get("webhook_username"))
+                        logToDiscord(target_id, f"Content of {url} has changed.", text_as_file=current_content, webhook_url=target.get("webhook"), webhook_username=target.get("webhook_username"))
 
             else:
                 current_content = ""
@@ -217,6 +246,7 @@ try:
                 log(f"Wrote changes. Got message: {msg}")
             else:
                 log("Nothing changed.")
+        old_data["last_check_timestamp"] = time.time()
         with open(os.path.join(project_dir, previous_data_filename), "w") as f:
             json.dump(old_data, f)
         log(f"Next check at {time.strftime("%H:%M", time.localtime(time.time()+config["check_delay_seconds"]))}")
