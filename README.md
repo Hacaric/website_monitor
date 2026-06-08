@@ -36,3 +36,4 @@
 }
 ```
 4. Run `python website_monitor.py`
+5. (Optional) If you're using Linux with systemd, you can setup a service with `sudo python setup_service.py`
