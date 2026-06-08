@@ -6,11 +6,23 @@
     "ignore_inital_status_check":true,
     "targets":[{
         "url":WEBSITE_URL,
-        "require_ssl_certificate":true,
-        "webhook":YOUR_DISCORD_WEBHOOK,
+        "require_ssl_certificate":false,
+        "webhook_username":"Website monitor", 
         "save_diffs":true,
-        "webhook_username":"Website monitoring bot", 
-        "use_discord_on_status_change":true,
+        "loggers":[{
+            "type":"BOT",
+            "token":TOKEN,
+            "target_type":"CHANNEL",
+            "target_id":channel_id,
+            "message_format":"%M"
+        },
+        {
+            "type":"WEBHOOK",           
+            "url":WEBHOOK_URL,          
+            "message_format":"%M",
+            "webhook_username":"Website monitor" 
+        }],
+        "use_discord_on_status_change":false,
         "ping_on_status_change":false,
         "check_content_changes":true,
         "use_webhook_on_content_change":false

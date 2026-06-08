@@ -15,9 +15,21 @@
         "require_ssl_certificate":true,
         "webhook":YOUR_DISCORD_WEBHOOK,  //Make sure it has https:// prefix!
         "save_diffs":true,  //Save website changes? They will be stored in history/ directory. Similar to git changes (library: difflib)
-        "webhook_username":"Website monitoring bot",  //Shown as author of message in discord
-        "use_webhook_on_status_change":true,  //Send message to discord when status changes
-        "ping_on_status_change":false,  //Ping @everyone when status changes (only applies if use_webhook_on_status_change is true)
+        "loggers":[{
+            "type":"BOT",
+            "token":TOKEN,       // discord bot access token
+            "target_type":"CHANNEL",   // "CHANNEL" or "USER"
+            "target_id":channel_id,    // if target_type is "CHANNEL", then this is channel id, if target_type is "USER", than it's user id
+            "message_format":"%M"      // Message format (all instances of '%M' are replaced by the log message)
+        },
+        {
+            "type":"WEBHOOK",           
+            "url":WEBHOOK_URL,           // What to say? It's just the discord webhook url  (or any other url that accepts discord-formatted POST requests)
+            "message_format":"%M",       // Message format (all instances of '%M' are replaced by the log message)
+            "webhook_username":"Website monitor" 
+        }],
+        "use_discord_on_status_change":true,  //Send message to discord when status changes
+        "ping_on_status_change":false,  //Ping @everyone when status changes (only applies if use_discord_on_status_change is true)
         "check_content_changes":true,  //Check html for changes?
         "use_webhook_on_content_change":false  //Write discord message when html changes?
     }]

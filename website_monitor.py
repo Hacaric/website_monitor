@@ -21,8 +21,10 @@ def log(*msg, end="\n"):
     logger.log(*msg, target_logs_names=["main"], end=end)
 
 def logToDiscord(target_id, *msg, text_as_file=None):
+    # print(f"Trying to log message to target_id={target_id}, these loggers will be used: {DISCORD_LOGGERS[target_id]}")
     logger.log(*msg)
     for discord_logger in DISCORD_LOGGERS[target_id]:
+        # print(f'loggin\' to discord of type {type(discord_logger)}')
         discord_logger.log(*msg, text_as_file=text_as_file)
     # data = {
     #     "username": webhook_username,
@@ -73,12 +75,16 @@ for target in config["targets"]:
                 message_format = logger_.get("message_format","%M")
                 target_type = logger_["target_type"]
                 target_id = logger_["target_id"]
+                print(f"Registering BOT with attributes: token={token}, target_type={target_type}, target_id={target_id}")
                 DISCORD_LOGGERS[-1].append(DiscordBotLog(token, target_type, target_id, message_format=message_format))
             case "WEBHOOK":
                 url = logger_["url"]
                 webhook_username = logger_.get("webhook_username","Website monitor")
                 message_format = logger_.get("message_format", "%M")
+                print(f"Registering WEBHOOK with attributes: url={url}, username={webhook_username}")
                 DISCORD_LOGGERS[-1].append(DiscordWebhookLog(url, webhook_username, message_format))
+
+print(f"Done registering loggers... DISCORD_LOGGERS={DISCORD_LOGGERS}")
 
 default_url_prefix:str = config["default_url_prefix"]
 
@@ -150,12 +156,6 @@ if not online_reference_url.startswith(("https://", "http://", default_url_prefi
 
 try:
     while True:
-        if old_data.get('last_check_timestamp'):
-            epoch_date_time = datetime.fromtimestamp(round(old_data.get('last_check_timestamp')))
-            epoch_date_time_now = datetime.fromtimestamp(round(time.time()))
-            log(f"Last check occured on {epoch_date_time}, which was {epoch_date_time_now - epoch_date_time} ago")
-        else:
-            log("This is the first check (no previous timestamp)")
         log("Checking internet access..")
         online_check_delay_seconds = config["online_check_delay_seconds"]
         online = False
@@ -203,7 +203,7 @@ try:
                 old_data[url]["status_code"] = status_code
                 log(f"Added url {url} with status {status_code}")
 
-            if status_code != old_data[url]["status_code"] and not (target.get("ignore_inital_status_check") and this_is_first_status_check):
+            if status_code != old_data[url]["status_code"] or (this_is_first_status_check and not target.get("ignore_inital_status_check")):
                 if target.get("use_discord_on_status_change"):
                     # if target.get("ping_on_status_change"):
                     #     logToDiscord(f"@everyone `{url}` changed status code to {status_code}!"
@@ -246,9 +246,18 @@ try:
                 log(f"Wrote changes. Got message: {msg}")
             else:
                 log("Nothing changed.")
+        last_timestamp = old_data.get('last_check_timestamp')
         old_data["last_check_timestamp"] = time.time()
         with open(os.path.join(project_dir, previous_data_filename), "w") as f:
             json.dump(old_data, f)
+
+
+        if last_timestamp:
+            epoch_date_time = datetime.fromtimestamp(round(last_timestamp))
+            epoch_date_time_now = datetime.fromtimestamp(round(time.time()))
+            log(f"\nLast check occured on {epoch_date_time}, which was {epoch_date_time_now - epoch_date_time}s ago")
+        else:
+            log("\nThis is the first check (no previous timestamp)")
         log(f"Next check at {time.strftime("%H:%M", time.localtime(time.time()+config["check_delay_seconds"]))}")
         time.sleep(config["check_delay_seconds"])
 
@@ -258,8 +267,9 @@ except KeyboardInterrupt:
     with open(os.path.join(project_dir, previous_data_filename), "w") as f:
         json.dump(old_data, f, indent=4)
 
-except Exception as e:
-    log(f"Error in the main loop: {e}")
-    old_data["script_exit"] = str(e)
-    with open(os.path.join(project_dir, previous_data_filename), "w") as f:
-        json.dump(old_data, f)
+# Removed handling all exception for debugging reason: LET ME SEE THE WHOLE FRICKIN ERROR TRACE
+# except Exception as e:
+#     log(f"Error in the main loop: {e}")
+#     old_data["script_exit"] = str(e)
+#     with open(os.path.join(project_dir, previous_data_filename), "w") as f:
+#         json.dump(old_data, f)
