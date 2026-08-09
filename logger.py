@@ -1,149 +1,160 @@
-import os, requests
-from datetime import datetime
-LOG_FILES = {}
-MAIN_LOG = None
-STATS_LOG = None
+# 
+# Example usage: 
+#
+# from gameLogger import *
+# new_log_file("./log/", "server.log")
+# log("Hello world!")
+# close_log_files()
+#
+# 
+# Note: please close files properly (with close_log_files()) so repeated messages are logged correctly 
 
-class LogFile:
-    def __init__(self, name, path, filename, file_open_mode="w", prefix_format='[%H:%M:%S] ', autoopen=True):
-        self.name = name
-        self.filename = filename
-        self.path = path
-        self.file_open_mode = file_open_mode
-        self.prefix_format = prefix_format
-        self.unwritten_msg = []
-        if autoopen:
-            self.file = open(os.path.join(path, filename), file_open_mode)
-        else:
-            self.file = None
+import os
+import datetime
+ENDC = '\033[0m' #end color effects
+colorNames = {
+    "header": '\033[95m',
+    "blue": '\033[94m',
+    "cyan": '\033[96m',
+    "green": '\033[92m',
+    "warning": '\033[93m',
+    "fail": '\033[91m',
+    "error": '\033[91m',
+    "red": '\033[91m',
+    "endc": '\033[0m',
+    "bold": '\033[1m',
+    "underline": '\033[4m',
+    "italic": '\033[3m',
+    "endc": '\033[0m'
+}
+def getColorCodes(color:str|None) -> tuple[str, str]:
+    """
+    Return color codes for the given color
+    Supported colors:
+    - RGB in format: "#RRGGBB" 
+    - Font variations: "bold", "underline", "italic"
+    - Color names: "header", "blue", "cyan", "green", "warning", "fail", "error", "red"
+    - Special: "endc" (end of formatting)
+    Supported formats:
+    - color:str
+    - [color1:str, color2:str, ...]
+    """
+    if type(color) == list:
+        colors = []
+        for i in color:
+            colors.append(getColorCodes(i)[0])
+        return "".join(colors), ENDC
+    if type(color) == str and len(color) == 7 and color[0] == "#":
+        return f"\033[38;2;{int(color[1:3], 16)};{int(color[3:5], 16)};{int(color[5:], 16)}m", ENDC
+    if color == None:
+        return "", ""
+    if color in colorNames:
+        return colorNames[color], ENDC
+    return f"(color:{color})", ""
+log_files = []
+last_date = -1
+input_global = False
+input_prefix_global = " >> "
+last_log = ""
+last_log_repeated = 0
+MAX_REPEAT = 3
 
-    def reopen(self, new_filename=None, new_path=None, new_file_open_mode=None):
-        if self.file:
-            self.file.close()
-        if new_filename:
-            self.filename = new_filename
-        if new_path:
-            self.path = new_path
-        if new_file_open_mode:
-            self.file_open_mode = new_file_open_mode
-        self.file = open(os.path.join(self.path, self.filename), self.file_open_mode)
+def new_log_file(dir, name, replace=False, input_=input_global, input_prefix=input_prefix_global):
+    global log_file, input_global, input_prefix_global
+    input_global, input_prefix_global = input_, input_prefix
+    if not os.path.exists(dir):
+        os.makedirs(dir)
+    if not replace:
+        files = os.listdir(dir)
+        idx = 0
+        name = name.split(".")
+        name = [".".join(name[:-1]), "."+name[-1]]
+        while name[0]+str(idx)+name[1] in files:
+            idx += 1
+        name = name[0]+str(idx)+name[1]
+    file = open(os.path.join(dir, name), "w")
+    log_files.append(file)
+def write_to_files(message, flush=False):
+    for log_file in log_files:
+        if log_file.closed:
+            print(f"Log file {log_file.name} is closed. Removing from log files.")
+            log_files.remove(log_file)
+            continue
+        log_file.write(message)
+        if flush:
+            log_file.flush()
+def get_time():
+    time = datetime.datetime.now()
+    return str(time.hour)+":"+str(time.minute)+":"+str(time.second)
+def log(*message, before="", color:str|list[str]|None=None, handle_repeat=True, print_only=False, disable_autocolor=False):
+    """
+    Log a message to the console and all log files (if it exists)
+    Console message can be colorful
+    Messages starting with "Error" and "Debug" trigger automatic color unless disabled by disable_autocolor kwarg
+    @param:
+        *message: The message to log
+        color: The color of the message:
+            - Formatting: a) one color name b) list of color names
+            - Supported color names: a) rgb in format: "#RRGGBB" b) name from list: "header", "blue", "cyan", "green", "warning", "fail", "endc", "bold", "underline", "italic", "red", "error"
+    @kwargs:
+        handle_repeat (default:True): If True, the message will be logged only few times if it is repeated
+        print_only (default:False): If True, the message will be printed only to the console and not to the log files, repeating will not be handled
+        disable_autocolor: If True, messages starting with "Error" and "Debug" are automatically applied (with the smallest color priority = added to the start of color list)
+    
+    """
+    global last_date, last_log, last_log_repeated
 
-    def flush(self):
-        if self.file:
-            self.file.flush()
+    if not color:
+        color = []
+    if not isinstance(color, list):
+        color = [color]
 
-    def write(self, *msg, end="\n", msg_join=" ", prefix=True, flush=False):
-        final_msg = msg_join.join(list(msg)) + end
-        if prefix:
-            now = datetime.now()
-            final_msg = now.strftime(self.prefix_format) + final_msg
-        if self.file:
-            self.file.write(final_msg)
-            if flush:
-                self.file.flush()
-        else:
-            self.unwritten_msg.append(final_msg)
+    message = list(message)
+    if len(message) == 1 and isinstance(message[0], str) and not disable_autocolor:
+        if message[0][0:5] == "Error":
+            color = ["fail"] + color
+        if message[0][0:5] == "Debug":
+            color = ["#0000ff"] + color
+    else:
+        message = " ".join([str(i) for i in list(message)])
 
-    def close(self):
-        if self.file:
-            self.file.close()
-            self.file = None
+    if log_files and last_date != datetime.datetime.now().date():
+        write_to_files(f"{"-"*20}\nNew date: {datetime.datetime.now().date()}\n{"-"*20}\n", flush=True)
+        last_date = datetime.datetime.now().date()
 
-class LogToWebHook(LogFile):
-    def __init__(self, name, webhook_url, webhook_username):
-        self.webhook_url = webhook_url
-        self.name = name
-        self.webhook_username = webhook_username
-        self.active = True
+    if print_only:
+        colorCodes = getColorCodes(color)
+        print(colorCodes[0], "[LOG]: ", *message, colorCodes[1], sep="")
 
-    def reopen(self):
-        self.active = True
+        if input_global:
+            print(input_prefix_global)
+        return
 
-    def flush(self):
-        pass
+    
+    parsed_log = " ".join([str(i) for i in list(message)])
+    if handle_repeat:
+        if last_log == parsed_log:
+            if last_log_repeated == MAX_REPEAT:
+                log("Log frozen (repeating messages)", color="warning", handle_repeat=False, print_only=True)
+            last_log_repeated += 1
+        if last_log_repeated > MAX_REPEAT and last_log == parsed_log:
+            return
+        elif last_log_repeated > MAX_REPEAT and last_log != parsed_log:
+            log(f"Above log repeated {last_log_repeated - MAX_REPEAT} more times.", color="warning", handle_repeat=False)
+            last_log_repeated = 0
+    # if not (handle_repeat and last_log_repeated > MAX_REPEAT and last_log == parsed_log):
+    last_log = parsed_log
+    if log_files:
+        write_to_files(f"{before}[LOG] [time:{get_time()}]: {str("\n\t".join([str(i) for i in list(message)]))}\n", flush=True)
+    colorCodes = getColorCodes(color)
+    print(colorCodes[0], f"{before}[LOG]: ", *message, colorCodes[1], sep="")
 
-    def write(self, *msg, end="\n", msg_join=" ", prefix=False, **kwargs):
-        print(f"Writing to webhook: {list(msg)}")
-        final_msg = msg_join.join(list(msg)) + end
-        if prefix:
-            now = datetime.now()
-            final_msg = now.strftime(self.prefix_format) + final_msg
+    if input_global:
+        print(input_prefix_global)
+def close_log_files():
+    log(f"=== Closed on {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ===")
+    for log_file in log_files:
         try:
-            while self.unwritten_msg: 
-                data = {
-                      "username":self.webhook_username,
-                      "content":"Retry: "+self.unwritten_msg.pop(0)
-                }
-                requests.post(url=self.webhook_url, data=data)
-
-            data = {
-                "username":self.webhook_username,
-                "content":final_msg
-            }
-            requests.post(url=self.webhook_url, data=data)
+            log_file.close()
         except Exception as e:
-            if self.name == "main":
-                print(f"Error sending message via webhook: {e}")
-            else:
-                log(f"Error sending message via webhook: {e}", target_logs_names=["main"])
-            self.unwritten_msg.append(final_msg)
-
-    def close(self):
-        self.active = False
-
-def new_webhook_log(name, url, webhook_username):
-    global LOG_FILES
-    if name in LOG_FILES:
-        raise ValueError(f"A log webhook with the name '{name}' already exists.")
-    # if name == "main":
-    #     raise ValueError("Can't name webhook log 'main' to avoid recursion when logging errors.")
-    log_file = LogToWebHook(name, url, webhook_username)
-    LOG_FILES[name] = log_file
-    return log_file
-
-def new_log(name, path, overwrite=True):
-    global LOG_FILES
-    now = datetime.now()
-    if name in LOG_FILES:
-        raise ValueError(f"A log file with the name '{name}' already exists.")
-    formatted_date_time = now.strftime("%d-%m-%Y_%H-%M")
-    log_file_name = f"log_{name}_{formatted_date_time}.txt"
-    if not os.path.exists(path):
-        os.makedirs(path)
-    elif not overwrite:
-        logs = os.listdir(path)
-        i = 2
-        while log_file_name in logs:
-            log_file_name = f"log_{name}_{formatted_date_time}#{i}.txt"
-            i += 1
-    log_file = LogFile(name, path, log_file_name, autoopen=True)
-    LOG_FILES[name] = log_file
-    return log_file
-    # stats_file_name = f"statisctic_{formatted_date_time}.txt"
-    # stats_file = open(os.path.join(os.path.dirname(__file__), "stats", stats_file_name), "wt")
-
-def log(*msg, target_logs_names=[], end="\n"):
-    # now = datetime.now()
-    # final_message = f"[{now.strftime('%H:%M:%S')}]"
-    final_message = ""
-    for text in list(msg):
-        if isinstance(text, str):
-            final_message += text + " "
-        else:
-            try:
-                text = str(text)
-                final_message += text + " "
-            except Exception as e:
-                # text = f"Error: Can't convert log message to string: {e}"
-                final_message += "{Error converting to str} "
-    # raise Exception("Failed successfully")
-    final_message = final_message[:-1] # Remove unnessecarry space
-    if final_message:
-        for log_file_name in target_logs_names:
-            log_file:LogFile = LOG_FILES[log_file_name]
-            log_file.write(final_message, flush=True, end=end)
-    print(final_message,end=end)
-
-def closeAll():
-    for log in LOG_FILES:
-        log.close
+            print(f"Error closing log file: {e}")

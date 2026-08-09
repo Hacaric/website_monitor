@@ -23,7 +23,7 @@ if input(f"Confirm service name: ") != SERVICE_NAME:
     print("Name doesn't match: Aborting...")
     sys.exit(1)
 SERVICE_FILE = f"/etc/systemd/system/{SERVICE_NAME}.service"
-SCRIPT_PATH = os.path.join(os.path.dirname(__file__), "website_monitor.py")
+SCRIPT_PATH = os.path.join(os.path.dirname(__file__), "main.py")
 REQUIREMENTS_CHECK_SCRIPT_PATH = os.path.join(os.path.dirname(__file__), "check_requirements.py")
 # USER = os.getenv("USER")
 USER = input(f"The service os owned by root by default, but it has limited access to user-installed python packages. Pick user that has requirements installed.\nWhich user do you want to own the service (make sure it has correct python packages installed)? >> ")

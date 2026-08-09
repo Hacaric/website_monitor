@@ -2,6 +2,7 @@ import discord
 import asyncio
 import requests
 import io
+from logger import log
 
 class DiscordLogClient:
     def __init__(self):pass
@@ -9,11 +10,10 @@ class DiscordLogClient:
     def log(*msg):pass
 
 class DiscordBotLog(DiscordLogClient):
-    def __init__(self, TOKEN, target_type, target_id, message_format="%M"):
+    def __init__(self, TOKEN, target_type, target_id):
         self.TOKEN = TOKEN
         self.target_type = target_type
         self.target_id = target_id
-        self.message_format = message_format
         self.client = None
         self.log = self.write
 
@@ -41,7 +41,7 @@ class DiscordBotLog(DiscordLogClient):
                         files = [discord.File(file_data, filename="content.html")]
                     await target.send(message_formatted, files=files)
             except Exception as e:
-                print(f"Discord send error: {e}")
+                log(f"Discord send error: {e}")
             finally:
                 await self.client.close()
         
@@ -49,14 +49,12 @@ class DiscordBotLog(DiscordLogClient):
 
     def write(self, *msg, text_as_file=None):
         message = " ".join(map(str, msg))
-        message_formatted = self.message_format.replace("%M", message)
-        asyncio.run(self._send(message_formatted, text_as_file=text_as_file))
+        asyncio.run(self._send(message, text_as_file=text_as_file))
 
 class DiscordWebhookLog(DiscordLogClient):
-    def __init__(self, URL, webhook_username, message_format="%M"):
+    def __init__(self, URL, webhook_username):
         self.URL = URL
         self.webhook_username = webhook_username
-        self.message_format = message_format
         self.log = self.write
 
     def _send(self, *msg, text_as_file=None):
@@ -84,8 +82,7 @@ class DiscordWebhookLog(DiscordLogClient):
 
     def write(self, *msg, text_as_file=None):
         message = " ".join(map(str, msg))
-        message_formatted = self.message_format.replace("%M", message)
-        self._send(message_formatted, text_as_file=text_as_file)
+        self._send(message, text_as_file=text_as_file)
         
 
 def send_message(client, session: aiohttp.ClientSession, targets:list[dict], message=None):

@@ -9,22 +9,32 @@
         "require_ssl_certificate":false,
         "webhook_username":"Website monitor", 
         "save_diffs":true,
-        "loggers":[{
-            "type":"BOT",
-            "token":TOKEN,
-            "target_type":"CHANNEL",
-            "target_id":channel_id,
-            "message_format":"%M"
-        },
-        {
-            "type":"WEBHOOK",           
-            "url":WEBHOOK_URL,          
-            "message_format":"%M",
-            "webhook_username":"Website monitor" 
-        }],
+        
+        "loggers":[
+            {
+                "type":"BOT",
+                "token":TOKEN,
+                "target_type":"CHANNEL",
+                "target_id":channel_id,
+                "message_format":{
+                    "on_start": "Website monitor for url {url} has started!",
+                    "status_change": "`{url}` changed status code to {status_code}!",
+                    "content_change": "Content of {url} has changed."
+                }
+            },
+            {
+                "type":"WEBHOOK",           
+                "webhook_url":WEBHOOK_URL,
+                "message_format":{
+                    "on_start": "Website monitor for url {url} has started!",
+                    "status_change": "`{url}` changed status code to {status_code}!",
+                    "content_change": "Content of {url} has changed."
+                },
+                "webhook_username":"Website monitor of {url}" 
+            }
+        ],
         "use_discord_on_status_change":false,
-        "ping_on_status_change":false,
         "check_content_changes":true,
-        "use_webhook_on_content_change":false
+        "use_discord_on_content_change":false
     }]
 }
