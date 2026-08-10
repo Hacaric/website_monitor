@@ -59,8 +59,8 @@ def logToDiscord(target_id, *msg, text_as_file=None):
 
 def logLoggerMessageFromConfig(target_id, CONFIG, message_type:str, args:dict[str, str], text_as_file=None):
     for discord_logger in DISCORD_LOGGERS[target_id]:
-        msg = CONFIG["targets"][target_id][discord_logger]["message_format"].get(message_type, None)
-        if not msg:
+        msg = CONFIG["targets"][target_id][discord_logger]["message_format"].get(message_type, [])
+        if msg == []:
             log(f"Error in logLoggerMessageFromConfig(): Failed to load message format for: targets->{discord_logger}(logger)->{target_id}(logger_id)->message_format->{message_type}(message_type), returning early.")
             try:
                 msg = CONFIG["targets"][target_id][discord_logger]["message_format"][message_type]
@@ -68,6 +68,9 @@ def logLoggerMessageFromConfig(target_id, CONFIG, message_type:str, args:dict[st
             except Exception as e:
                 log(f"Error when loading message format: {e}")
             discord_logger.log("Failed to load message format (probably due to bad config structure), check logs for more info.")
+            return
+        elif msg is None:
+            # Message is turned off
             return
 
         for key, val in args.items():
